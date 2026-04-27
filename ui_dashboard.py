@@ -8,12 +8,11 @@ class TempoooApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Make window taller to fit new data
+        # Made window much taller to fit all the new data!
         self.title("Tempooo.io - System Monitor")
-        self.geometry("450x550") 
+        self.geometry("450x700") 
         self.resizable(False, False)
 
-        # Fetch static hardware names once (they don't change)
         cpu_name, gpu_name = sensor_reader.get_hardware_names()
         cores_threads = sensor_reader.get_core_counts()
 
@@ -38,14 +37,24 @@ class TempoooApp(ctk.CTk):
         self.telemetry_frame = ctk.CTkFrame(self)
         self.telemetry_frame.pack(pady=10, padx=20, fill="x")
 
-        self.cpu_usage_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Usage: -- %", font=ctk.CTkFont(size=16))
-        self.cpu_usage_label.pack(pady=10)
+        self.cpu_usage_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Usage: -- %", font=ctk.CTkFont(size=15))
+        self.cpu_usage_label.pack(pady=8)
 
-        self.cpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Temp: -- °C", font=ctk.CTkFont(size=16))
-        self.cpu_temp_label.pack(pady=10)
+        self.cpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Temp: -- °C", font=ctk.CTkFont(size=15))
+        self.cpu_temp_label.pack(pady=8)
 
-        self.gpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="GPU Temp: -- °C", font=ctk.CTkFont(size=16))
-        self.gpu_temp_label.pack(pady=10)
+        self.gpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="GPU Temp: -- °C", font=ctk.CTkFont(size=15))
+        self.gpu_temp_label.pack(pady=8)
+
+        # --- NEW: MEMORY & STORAGE SECTION ---
+        self.storage_frame = ctk.CTkFrame(self)
+        self.storage_frame.pack(pady=10, padx=20, fill="x")
+
+        self.ram_label = ctk.CTkLabel(self.storage_frame, text="RAM: --", font=ctk.CTkFont(size=15))
+        self.ram_label.pack(pady=10)
+
+        self.disk_label = ctk.CTkLabel(self.storage_frame, text="Storage (C:): --", font=ctk.CTkFont(size=15))
+        self.disk_label.pack(pady=10)
 
         # --- SYSTEM HEALTH SECTION ---
         self.health_frame = ctk.CTkFrame(self)
@@ -54,7 +63,7 @@ class TempoooApp(ctk.CTk):
         self.health_label = ctk.CTkLabel(self.health_frame, text="System Health: Assessing...", font=ctk.CTkFont(size=16, weight="bold"))
         self.health_label.pack(pady=10)
 
-        # Start the live update loop
+        # Start live updates
         self.update_dashboard()
 
     def update_dashboard(self):
@@ -63,12 +72,28 @@ class TempoooApp(ctk.CTk):
         cpu_t = sensor_reader.get_cpu_temp()
         gpu_t = sensor_reader.get_gpu_temp(cpu_t)
         health = sensor_reader.get_health_status(cpu_t)
+        
+        # Fetch new data
+        ram_info = sensor_reader.get_ram_info()
+        disk_info = sensor_reader.get_disk_info()
+
+        # Trigger OS Notification if too hot!
+        sensor_reader.check_temp_alert(cpu_t)
 
         # Update UI text
         self.cpu_usage_label.configure(text=f"CPU Usage: {usage} %")
         self.cpu_temp_label.configure(text=f"CPU Temp: {cpu_t} °C")
         self.gpu_temp_label.configure(text=f"GPU Temp: {gpu_t} °C")
-        self.health_label.configure(text=f"System Health: {health}")
+        self.ram_label.configure(text=f"RAM: {ram_info}")
+        self.disk_label.configure(text=f"Drive (C:): {disk_info}")
+        
+        # Change health text color based on status
+        if "Critical" in health:
+            self.health_label.configure(text=f"System Health: {health}", text_color="red")
+        elif "Normal" in health:
+            self.health_label.configure(text=f"System Health: {health}", text_color="yellow")
+        else:
+            self.health_label.configure(text=f"System Health: {health}", text_color="green")
 
         # Loop every 1000ms
         self.after(1000, self.update_dashboard)
