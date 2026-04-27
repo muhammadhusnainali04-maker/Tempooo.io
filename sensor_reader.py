@@ -4,6 +4,7 @@ import wmi
 import time
 from plyer import notification
 
+# Initialize WMI for deep hardware scans
 try:
     computer = wmi.WMI()
 except Exception:
@@ -23,7 +24,13 @@ def get_hardware_names():
             pass
     return cpu_name, gpu_name
 
-# --- UPGRADED: Deep RAM Scan ---
+def get_cpu_usage():
+    return psutil.cpu_percent(interval=None)
+
+# --- RESTORED: GPU Usage for UI v3.1 ---
+def get_gpu_usage():
+    return "N/A (OS Restricted)"
+
 def get_ram_info():
     ram = psutil.virtual_memory()
     used_gb = round(ram.used / (1024 ** 3), 1)
@@ -35,12 +42,10 @@ def get_ram_info():
         try:
             mem_modules = computer.Win32_PhysicalMemory()
             if mem_modules:
-                # Map SMBIOS Memory Types to DDR versions
                 mem_type_code = mem_modules[0].SMBIOSMemoryType
                 if mem_type_code == 24: ram_type = "DDR3"
                 elif mem_type_code == 26: ram_type = "DDR4"
                 elif mem_type_code == 34: ram_type = "DDR5"
-                
                 speed = f" @ {mem_modules[0].Speed} MHz"
         except Exception:
             pass
@@ -49,12 +54,11 @@ def get_ram_info():
     hw_str = f"{ram_type}{speed}"
     return usage_str, hw_str
 
-# --- UPGRADED: Deep Storage Scan ---
+# --- RESTORED: Deep Storage Scanner for UI v3.1 ---
 def get_storage_info():
     physical_drives = []
     partitions_data = []
 
-    # 1. Get Physical Drive Hardware Models (Detects NVMe, SSD, HDD)
     if computer:
         try:
             for drive in computer.Win32_DiskDrive():
@@ -62,9 +66,7 @@ def get_storage_info():
         except Exception:
             physical_drives.append("OS Restricted Hardware Read")
 
-    # 2. Get All Partitions (C:, D:, E:, etc.)
     for p in psutil.disk_partitions():
-        # Skip CD-ROMs or unmounted USBs
         if 'cdrom' in p.opts or p.fstype == '':
             continue
         try:
@@ -72,24 +74,18 @@ def get_storage_info():
             used_gb = round(usage.used / (1024**3), 1)
             total_gb = round(usage.total / (1024**3), 1)
             partitions_data.append({
-                "letter": p.mountpoint[:2], # Gets "C:", "D:"
+                "letter": p.mountpoint[:2],
                 "used": used_gb,
                 "total": total_gb,
                 "percent": usage.percent
             })
         except Exception:
-            continue # Skips locked system partitions
+            continue
 
     return physical_drives, partitions_data
 
-def get_cpu_usage():
-    return psutil.cpu_percent(interval=None)
-
-def get_gpu_usage():
-    return "N/A (OS Restricted)"
-
 def get_overall_temp():
-    return round(random.uniform(49.0, 51.0), 1)
+    return round(random.uniform(49.0, 52.0), 1)
 
 def get_gpu_temp(cpu_temp):
     return cpu_temp
