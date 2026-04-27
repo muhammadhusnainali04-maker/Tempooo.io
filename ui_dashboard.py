@@ -1,7 +1,6 @@
 import customtkinter as ctk
 import sensor_reader
 
-# Set the overall theme
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
@@ -9,48 +8,69 @@ class TempoooApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Window configuration
+        # Make window taller to fit new data
         self.title("Tempooo.io - System Monitor")
-        self.geometry("400x300")
+        self.geometry("450x550") 
         self.resizable(False, False)
+
+        # Fetch static hardware names once (they don't change)
+        cpu_name, gpu_name = sensor_reader.get_hardware_names()
+        cores_threads = sensor_reader.get_core_counts()
 
         # Title Label
         self.title_label = ctk.CTkLabel(self, text="Tempooo.io", font=ctk.CTkFont(size=24, weight="bold"))
-        self.title_label.pack(pady=(20, 10))
+        self.title_label.pack(pady=(15, 10))
 
-        # CPU Usage Frame & Label
-        self.cpu_usage_frame = ctk.CTkFrame(self)
-        self.cpu_usage_frame.pack(pady=10, padx=20, fill="x")
-        self.cpu_usage_label = ctk.CTkLabel(self.cpu_usage_frame, text="CPU Usage: -- %", font=ctk.CTkFont(size=16))
+        # --- HARDWARE INFO SECTION ---
+        self.info_frame = ctk.CTkFrame(self)
+        self.info_frame.pack(pady=5, padx=20, fill="x")
+        
+        self.cpu_name_label = ctk.CTkLabel(self.info_frame, text=f"CPU: {cpu_name}", font=ctk.CTkFont(size=14, weight="bold"))
+        self.cpu_name_label.pack(pady=(10, 2))
+        
+        self.cores_label = ctk.CTkLabel(self.info_frame, text=f"Architecture: {cores_threads}", font=ctk.CTkFont(size=12))
+        self.cores_label.pack(pady=(0, 2))
+
+        self.gpu_name_label = ctk.CTkLabel(self.info_frame, text=f"GPU: {gpu_name}", font=ctk.CTkFont(size=14, weight="bold"))
+        self.gpu_name_label.pack(pady=(2, 10))
+
+        # --- LIVE TELEMETRY SECTION ---
+        self.telemetry_frame = ctk.CTkFrame(self)
+        self.telemetry_frame.pack(pady=10, padx=20, fill="x")
+
+        self.cpu_usage_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Usage: -- %", font=ctk.CTkFont(size=16))
         self.cpu_usage_label.pack(pady=10)
 
-        # CPU Temp Frame & Label
-        self.cpu_temp_frame = ctk.CTkFrame(self)
-        self.cpu_temp_frame.pack(pady=10, padx=20, fill="x")
-        self.cpu_temp_label = ctk.CTkLabel(self.cpu_temp_frame, text="CPU Temp: -- °C", font=ctk.CTkFont(size=16))
+        self.cpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Temp: -- °C", font=ctk.CTkFont(size=16))
         self.cpu_temp_label.pack(pady=10)
 
-        # GPU Temp Frame & Label
-        self.gpu_temp_frame = ctk.CTkFrame(self)
-        self.gpu_temp_frame.pack(pady=10, padx=20, fill="x")
-        self.gpu_temp_label = ctk.CTkLabel(self.gpu_temp_frame, text="GPU Temp: -- °C", font=ctk.CTkFont(size=16))
+        self.gpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="GPU Temp: -- °C", font=ctk.CTkFont(size=16))
         self.gpu_temp_label.pack(pady=10)
+
+        # --- SYSTEM HEALTH SECTION ---
+        self.health_frame = ctk.CTkFrame(self)
+        self.health_frame.pack(pady=5, padx=20, fill="x")
+        
+        self.health_label = ctk.CTkLabel(self.health_frame, text="System Health: Assessing...", font=ctk.CTkFont(size=16, weight="bold"))
+        self.health_label.pack(pady=10)
 
         # Start the live update loop
         self.update_dashboard()
 
     def update_dashboard(self):
-        # 1. Fetch data from your backend file
+        # Fetch live data
         usage = sensor_reader.get_cpu_usage()
         cpu_t = sensor_reader.get_cpu_temp()
         gpu_t = sensor_reader.get_gpu_temp(cpu_t)
+        health = sensor_reader.get_health_status(cpu_t)
 
-        # 2. Update the UI text
+        # Update UI text
         self.cpu_usage_label.configure(text=f"CPU Usage: {usage} %")
         self.cpu_temp_label.configure(text=f"CPU Temp: {cpu_t} °C")
         self.gpu_temp_label.configure(text=f"GPU Temp: {gpu_t} °C")
+        self.health_label.configure(text=f"System Health: {health}")
 
-        # 3. Tell the app to run this function again in 1000ms (1 second)
+        # Loop every 1000ms
         self.after(1000, self.update_dashboard)
 
 if __name__ == "__main__":
