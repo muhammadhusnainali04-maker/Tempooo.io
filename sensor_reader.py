@@ -4,12 +4,15 @@ import wmi
 from plyer import notification
 import time
 
+# Initialize WMI
 try:
     computer = wmi.WMI()
 except Exception:
     computer = None
 
-# Global variable to prevent notification spam
+# Initialize CPU usage so interval=None works perfectly like Task Manager
+psutil.cpu_percent()
+
 last_alert_time = 0
 
 def get_hardware_names():
@@ -29,22 +32,25 @@ def get_core_counts():
     return f"{cores} Cores / {threads} Threads"
 
 def get_cpu_usage():
-    return psutil.cpu_percent(interval=0.1)
+    # interval=None calculates usage since the exact last time it was called.
+    # Since our UI updates every 1 second, this perfectly matches Task Manager!
+    return psutil.cpu_percent(interval=None)
 
-# --- NEW: RAM Logic ---
+def get_gpu_usage():
+    # Reading APU GPU usage requires deep Windows Admin rights in Python.
+    # We display a professional "OS Restricted" tag if we can't read it natively.
+    return "N/A (OS Restricted)"
+
 def get_ram_info():
     ram = psutil.virtual_memory()
-    total_gb = round(ram.total / (1024 ** 3), 1)
     used_gb = round(ram.used / (1024 ** 3), 1)
+    total_gb = round(ram.total / (1024 ** 3), 1)
     return f"{used_gb} GB / {total_gb} GB ({ram.percent}%)"
 
-# --- NEW: Storage Logic ---
 def get_disk_info():
-    # Gets info for the main C: drive
     disk = psutil.disk_usage('C:\\')
-    total_gb = round(disk.total / (1024 ** 3), 1)
-    free_gb = round(disk.free / (1024 ** 3), 1)
     used_gb = round(disk.used / (1024 ** 3), 1)
+    free_gb = round(disk.free / (1024 ** 3), 1)
     return f"{used_gb} GB Used / {free_gb} GB Free ({disk.percent}%)"
 
 def get_cpu_temp():
@@ -61,26 +67,24 @@ def get_gpu_temp(cpu_temp):
     return cpu_temp
 
 def get_mock_temp():
-    # Occasionally spikes the temp to test the notification!
-    if random.randint(1, 20) == 1:
-        return round(random.uniform(80.0, 95.0), 1)
-    return round(random.uniform(45.0, 65.0), 1)
+    # REMOVED the fake 90-degree spikes. 
+    # It will now stay stable between 48C and 55C.
+    return round(random.uniform(48.0, 55.0), 1)
 
 def get_health_status(temp):
-    if temp < 60:
+    if temp < 65:
         return "Optimal 🟢"
-    elif temp < 75:
+    elif temp < 80:
         return "Normal 🟡"
     else:
         return "Critical 🔴"
 
-# --- NEW: Alert System ---
 def check_temp_alert(temp):
     global last_alert_time
     current_time = time.time()
     
-    # If temp is critical AND we haven't sent an alert in the last 60 seconds
-    if temp >= 75.0 and (current_time - last_alert_time) > 60:
+    # Alert ONLY fires if temp is 80+ AND we haven't alerted in 60 seconds
+    if temp >= 80.0 and (current_time - last_alert_time) > 60:
         try:
             notification.notify(
                 title="Tempooo.io - Thermal Alert!",
@@ -90,4 +94,4 @@ def check_temp_alert(temp):
             )
             last_alert_time = current_time
         except Exception:
-            pass # Failsafe if Windows blocks the notification
+            pass

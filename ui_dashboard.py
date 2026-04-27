@@ -8,9 +8,8 @@ class TempoooApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Made window much taller to fit all the new data!
         self.title("Tempooo.io - System Monitor")
-        self.geometry("450x700") 
+        self.geometry("450x720") # Made slightly taller for the new GPU usage label
         self.resizable(False, False)
 
         cpu_name, gpu_name = sensor_reader.get_hardware_names()
@@ -38,15 +37,19 @@ class TempoooApp(ctk.CTk):
         self.telemetry_frame.pack(pady=10, padx=20, fill="x")
 
         self.cpu_usage_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Usage: -- %", font=ctk.CTkFont(size=15))
-        self.cpu_usage_label.pack(pady=8)
+        self.cpu_usage_label.pack(pady=6)
+
+        # NEW: GPU Usage Label
+        self.gpu_usage_label = ctk.CTkLabel(self.telemetry_frame, text="GPU Usage: -- %", font=ctk.CTkFont(size=15))
+        self.gpu_usage_label.pack(pady=6)
 
         self.cpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="CPU Temp: -- °C", font=ctk.CTkFont(size=15))
-        self.cpu_temp_label.pack(pady=8)
+        self.cpu_temp_label.pack(pady=6)
 
         self.gpu_temp_label = ctk.CTkLabel(self.telemetry_frame, text="GPU Temp: -- °C", font=ctk.CTkFont(size=15))
-        self.gpu_temp_label.pack(pady=8)
+        self.gpu_temp_label.pack(pady=6)
 
-        # --- NEW: MEMORY & STORAGE SECTION ---
+        # --- MEMORY & STORAGE SECTION ---
         self.storage_frame = ctk.CTkFrame(self)
         self.storage_frame.pack(pady=10, padx=20, fill="x")
 
@@ -63,39 +66,37 @@ class TempoooApp(ctk.CTk):
         self.health_label = ctk.CTkLabel(self.health_frame, text="System Health: Assessing...", font=ctk.CTkFont(size=16, weight="bold"))
         self.health_label.pack(pady=10)
 
-        # Start live updates
         self.update_dashboard()
 
     def update_dashboard(self):
         # Fetch live data
-        usage = sensor_reader.get_cpu_usage()
+        cpu_u = sensor_reader.get_cpu_usage()
+        gpu_u = sensor_reader.get_gpu_usage()
         cpu_t = sensor_reader.get_cpu_temp()
         gpu_t = sensor_reader.get_gpu_temp(cpu_t)
         health = sensor_reader.get_health_status(cpu_t)
-        
-        # Fetch new data
         ram_info = sensor_reader.get_ram_info()
         disk_info = sensor_reader.get_disk_info()
 
-        # Trigger OS Notification if too hot!
+        # Trigger OS Notification ONLY on real heat
         sensor_reader.check_temp_alert(cpu_t)
 
         # Update UI text
-        self.cpu_usage_label.configure(text=f"CPU Usage: {usage} %")
+        self.cpu_usage_label.configure(text=f"CPU Usage: {cpu_u} %")
+        self.gpu_usage_label.configure(text=f"GPU Usage: {gpu_u}")
         self.cpu_temp_label.configure(text=f"CPU Temp: {cpu_t} °C")
         self.gpu_temp_label.configure(text=f"GPU Temp: {gpu_t} °C")
         self.ram_label.configure(text=f"RAM: {ram_info}")
         self.disk_label.configure(text=f"Drive (C:): {disk_info}")
         
-        # Change health text color based on status
+        # Color coding for health
         if "Critical" in health:
             self.health_label.configure(text=f"System Health: {health}", text_color="red")
         elif "Normal" in health:
             self.health_label.configure(text=f"System Health: {health}", text_color="yellow")
         else:
-            self.health_label.configure(text=f"System Health: {health}", text_color="green")
+            self.health_label.configure(text=f"System Health: {health}", text_color="#2ECC71") # A nicer green
 
-        # Loop every 1000ms
         self.after(1000, self.update_dashboard)
 
 if __name__ == "__main__":
